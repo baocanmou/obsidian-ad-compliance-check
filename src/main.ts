@@ -20,8 +20,9 @@ export default class CompliancePlugin extends Plugin {
 		await this.loadSettings();
 
 		this.registerView(VIEW_TYPE, (leaf) => new ComplianceView(leaf, this));
-		this.registerEditorExtension(this.editorExtension);
+		// Fill the extension before registering it, so notes that are already open get it too.
 		this.applyEditorExtension();
+		this.registerEditorExtension(this.editorExtension);
 		this.addSettingTab(new ComplianceSettingTab(this.app, this));
 
 		this.statusBar = this.addStatusBarItem();

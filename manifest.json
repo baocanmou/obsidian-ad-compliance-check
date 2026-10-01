@@ -1,7 +1,7 @@
 {
 	"id": "ad-compliance-check",
 	"name": "Ad Compliance Check",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "1.7.2",
 	"description": "发布前检查中文文案里的广告法风险表达，给出依据和改法。Flag risky claims in Chinese ad copy as you write: superlatives, health and income promises, unsupported endorsements. Works fully offline.",
 	"author": "包参谋",

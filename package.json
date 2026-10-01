@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-ad-compliance-check",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Flag risky claims in Chinese ad copy before publishing.",
 	"main": "main.js",
 	"type": "module",
