@@ -28,6 +28,10 @@ export interface ComplianceSettings {
 	packsKey: string;
 }
 
+export function defaultSettings(): ComplianceSettings {
+	return { ...DEFAULT_SETTINGS, enabledPacks: [...DEFAULT_SETTINGS.enabledPacks], folderRules: [] };
+}
+
 export const DEFAULT_SETTINGS: ComplianceSettings = {
 	liveMark: true,
 	enabledPacks: PACKS.filter((p) => p.defaultOn).map((p) => p.id),
@@ -41,8 +45,9 @@ export const DEFAULT_SETTINGS: ComplianceSettings = {
 };
 
 export interface Analysis {
-	/** False when the note is outside the checked folders or switched off in frontmatter. */
+	/** False when the note is not checked; `skipped` says why. */
 	active: boolean;
+	skipped?: 'scope' | 'switch' | 'length';
 	hits: Hit[];
 	packNames: string[];
 }
@@ -67,17 +72,17 @@ export class Analyzer {
 
 	analyze(path: string | null, text: string): Analysis {
 		const s = this.settings();
-		const none: Analysis = { active: false, hits: [], packNames: [] };
-		if (text.length > MAX_LENGTH) return none;
+		const skip = (skipped: Analysis['skipped']): Analysis => ({ active: false, skipped, hits: [], packNames: [] });
+		if (text.length > MAX_LENGTH) return skip('length');
 
 		if (path !== null) {
 			const include = parseLines(s.includeFolders);
-			if (include.length && !include.some((f) => inFolder(path, f))) return none;
-			if (parseLines(s.excludeFolders).some((f) => inFolder(path, f))) return none;
+			if (include.length && !include.some((f) => inFolder(path, f))) return skip('scope');
+			if (parseLines(s.excludeFolders).some((f) => inFolder(path, f))) return skip('scope');
 		}
 
 		const note = parseNoteOptions(text, s.switchKey, s.packsKey);
-		if (!note.enabled) return none;
+		if (!note.enabled) return skip('switch');
 
 		const folderRules = path === null ? [] : s.folderRules.filter((r) => r.folder.trim() && inFolder(path, r.folder));
 		const wanted = new Set<string>([...s.enabledPacks, ...folderRules.flatMap((r) => r.packs), ...note.packs]);
@@ -87,10 +92,9 @@ export class Analyzer {
 		const key = JSON.stringify([packs.map((p) => p.id), s.customWords, folderWords, s.whitelist]);
 		let ruleset = this.cache.get(key);
 		if (!ruleset) {
-			const rules: Array<{ def: RuleDef; pack: string }> = [];
-			// Custom words go first so that, at equal position and length, they win over built-in ones.
-			for (const def of parseCustomWords(folderWords, '文件夹词库')) rules.push({ def, pack: '文件夹词库' });
-			for (const def of parseCustomWords(s.customWords, '自定义词库')) rules.push({ def, pack: '自定义词库' });
+			const rules: Array<{ def: RuleDef; pack: string; custom?: boolean }> = [];
+			for (const def of parseCustomWords(folderWords, '文件夹词库')) rules.push({ def, pack: '文件夹词库', custom: true });
+			for (const def of parseCustomWords(s.customWords, '自定义词库')) rules.push({ def, pack: '自定义词库', custom: true });
 			for (const p of packs) for (const def of p.rules) rules.push({ def, pack: p.name });
 			ruleset = compileRuleset(rules, parseLines(s.whitelist));
 			this.cache.set(key, ruleset);

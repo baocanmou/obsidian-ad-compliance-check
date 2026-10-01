@@ -67,7 +67,7 @@ test('folder rules add packs and words only inside the folder', () => {
 	assert.deepEqual(words('古法熬制，能降血糖。', { folderRules }, '客户/健康客户/文案.md'), ['古法', '降血糖']);
 	assert.deepEqual(words('古法熬制，能降血糖。', { folderRules }, '客户/健康客户2/文案.md'), []);
 	const hit = check('古法熬制', { folderRules }, '客户/健康客户/文案.md').hits[0]!;
-	assert.deepEqual([hit.level, hit.suggest, hit.reason], ['ban', ['传统工艺'], '客户要求']);
+	assert.deepEqual([hit.level, hit.replace, hit.suggest, hit.reason], ['ban', ['传统工艺'], [], '客户要求']);
 });
 
 test('include and exclude folders set the scope', () => {
@@ -95,4 +95,47 @@ test('note options parser handles inline and list forms', () => {
 
 test('no false positive on common safe phrases', () => {
 	assert.deepEqual(words('最近我们在做一个有机会落地的项目，最后效果不错，保健食品另说。', { enabledPacks: ['absolute', 'food'] }), []);
+});
+
+test('built-in rules give advice, never a one-click replacement', () => {
+	const all = { enabledPacks: ['absolute', 'guarantee', 'invest', 'authority', 'medical', 'food', 'cosmetics', 'education', 'realestate', 'superstition'] };
+	const { hits } = check('特供产品，根治，稳赚不赔，包过，药妆，开光，降血糖，零添加，升值空间。', all);
+	assert.equal(hits.length, 9);
+	assert.ok(hits.every((h) => h.replace.length === 0 && h.suggest.length > 0));
+});
+
+test('substrings of ordinary phrases are not flagged', () => {
+	const all = { enabledPacks: ['absolute', 'guarantee', 'invest', 'authority', 'medical', 'food', 'cosmetics', 'education', 'realestate', 'superstition'] };
+	const safe = [
+		'TOP10榜单，No.10 选手', '为确保本次活动顺利，环保本身很重要', '治愈系音乐', '最好用温水冲泡，最好看一下说明书',
+		'最好听医生的，最好吃完再走', '并非遗漏', '第一次瘦下来', '本月入一批货', '医生发现', '公开运营', '修改运费',
+		'确保过程', '面包过期', '确保健康', '预防病毒', '所有机型',
+	];
+	for (const text of safe) assert.deepEqual(words(text, all), [], text);
+	assert.deepEqual(words('南昌最好吃的米粉，NO.1 的口碑，Top1。7天瘦10斤，月入过万。', all), ['最好吃', 'NO.1', 'Top1', '7天瘦10', '月入过万']);
+});
+
+test('a URL does not hide the Chinese text after it', () => {
+	assert.deepEqual(words('官网https://bcmsj.com，我们是最好的品牌，顶级服务'), ['最好', '顶级']);
+});
+
+test('inline triple backticks are not a fence; fences close on a matching line', () => {
+	assert.deepEqual(words('```js``` 行内代码\n这是顶级的。'), ['顶级']);
+	assert.deepEqual(words('~~~~\n顶级\n~~~\n最佳\n~~~~\n顶尖'), ['顶尖']);
+	assert.deepEqual(words('---\n---\n顶级'), ['顶级']);
+});
+
+test('custom rules: alternation in a regular expression, and overriding a built-in level', () => {
+	assert.deepEqual(words('甲和乙', { customWords: '/甲|乙/ | 禁用' }), ['甲', '乙']);
+	const hit = check('顶级', { customWords: '顶级 | 慎用 | 高端' }).hits[0]!;
+	assert.deepEqual([hit.level, hit.replace, hit.pack], ['caution', ['高端'], '自定义词库']);
+});
+
+test('line numbers stay correct and long digit runs stay fast', () => {
+	const hit = check('距离\n10分钟直达', { enabledPacks: ['realestate'] }).hits[0]!;
+	assert.deepEqual([hit.text, hit.line], ['10分钟直达', 2]);
+	const start = Date.now();
+	check('一'.repeat(50000));
+	assert.ok(Date.now() - start < 500);
+	assert.equal(check('---\n合规检查: false # 暂不检查\n---\n顶级').skipped, 'switch');
 });

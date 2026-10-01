@@ -1,5 +1,4 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
-import { isReplacement } from './editor';
 import { LEVEL_LABEL, type Hit, type Level } from './engine';
 import type CompliancePlugin from './main';
 import { DISCLAIMER, summary } from './report';
@@ -7,6 +6,12 @@ import { DISCLAIMER, summary } from './report';
 export const VIEW_TYPE = 'compliance-check';
 
 const CONTEXT = 18;
+
+export const SKIPPED = {
+	scope: '这篇笔记不在检查范围内。',
+	switch: '这篇笔记已在属性中关闭检查。',
+	length: '这篇笔记超过 30 万字，未做检查。',
+};
 
 /** Side panel listing every risky expression in the note being edited. */
 export class ComplianceView extends ItemView {
@@ -49,7 +54,7 @@ export class ComplianceView extends ItemView {
 		const head = root.createDiv({ cls: 'compliance-head' });
 		head.createDiv({ cls: 'compliance-title', text: target.file.basename });
 		if (!analysis.active) {
-			root.createDiv({ cls: 'compliance-empty', text: '这篇笔记不在检查范围内，或已在属性中关闭检查。' });
+			root.createDiv({ cls: 'compliance-empty', text: SKIPPED[analysis.skipped ?? 'scope'] });
 			return;
 		}
 		head.createDiv({ cls: 'compliance-summary', text: summary(analysis.hits) });
@@ -84,12 +89,12 @@ export class ComplianceView extends ItemView {
 
 		item.createDiv({ cls: 'compliance-item-reason', text: hit.reason });
 		item.createDiv({ cls: 'compliance-item-basis', text: `依据：${hit.basis}` });
-		for (const s of hit.suggest.filter((s) => !isReplacement(s))) {
+		for (const s of hit.suggest) {
 			item.createDiv({ cls: 'compliance-item-advice', text: `建议：${s}` });
 		}
 
 		const actions = item.createDiv({ cls: 'compliance-item-actions' });
-		for (const s of hit.suggest.filter(isReplacement)) {
+		for (const s of hit.replace) {
 			const btn = actions.createEl('button', { text: `换成“${s}”` });
 			btn.addEventListener('click', (evt) => {
 				evt.stopPropagation();

@@ -70,26 +70,20 @@ function tooltipDom(view: EditorView, hit: Hit, host: EditorHost): HTMLElement {
 	dom.createDiv({ cls: 'compliance-tooltip-reason', text: hit.reason });
 	dom.createDiv({ cls: 'compliance-tooltip-basis', text: `依据：${hit.basis}` });
 
+	for (const s of hit.suggest) dom.createDiv({ cls: 'compliance-tooltip-advice', text: `建议：${s}` });
+
 	const actions = dom.createDiv({ cls: 'compliance-tooltip-actions' });
-	for (const s of hit.suggest) {
-		// A suggestion is either a short replacement or a longer piece of advice.
-		if (isReplacement(s)) {
-			const btn = actions.createEl('button', { text: `换成“${s}”` });
-			btn.addEventListener('click', () => {
-				view.dispatch({ changes: { from: hit.from, to: hit.to, insert: s } });
-			});
-		} else {
-			dom.createDiv({ cls: 'compliance-tooltip-advice', text: `建议：${s}` });
-		}
+	for (const s of hit.replace) {
+		const btn = actions.createEl('button', { text: `换成“${s}”` });
+		btn.addEventListener('click', () => {
+			// The tooltip can outlive an edit; only replace if the text is still where it was.
+			if (view.state.sliceDoc(hit.from, hit.to) !== hit.text) return;
+			view.dispatch({ changes: { from: hit.from, to: hit.to, insert: s } });
+		});
 	}
 	const allow = actions.createEl('button', { text: '加入白名单' });
 	allow.addEventListener('click', () => {
 		void host.addToWhitelist(hit.text);
 	});
 	return dom;
-}
-
-/** Built-in suggestions are advice sentences; custom words usually give a direct replacement. */
-export function isReplacement(suggestion: string): boolean {
-	return suggestion.length <= 8 && !/[，。：；]/.test(suggestion);
 }

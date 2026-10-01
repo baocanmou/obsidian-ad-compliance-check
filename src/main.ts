@@ -1,14 +1,14 @@
 import type { Extension } from '@codemirror/state';
 import { MarkdownView, Notice, Plugin, debounce, type Editor } from 'obsidian';
-import { complianceExtension, isReplacement } from './editor';
+import { complianceExtension } from './editor';
 import type { Hit } from './engine';
 import { buildReport, summary } from './report';
-import { Analyzer, DEFAULT_SETTINGS, type ComplianceSettings } from './ruleset';
+import { Analyzer, defaultSettings, type ComplianceSettings } from './ruleset';
 import { ComplianceSettingTab } from './settings';
-import { ComplianceView, VIEW_TYPE } from './view';
+import { ComplianceView, SKIPPED, VIEW_TYPE } from './view';
 
 export default class CompliancePlugin extends Plugin {
-	settings: ComplianceSettings = DEFAULT_SETTINGS;
+	settings: ComplianceSettings = defaultSettings();
 	analyzer = new Analyzer(() => this.settings);
 
 	private editorExtension: Extension[] = [];
@@ -42,7 +42,7 @@ export default class CompliancePlugin extends Plugin {
 			name: '把选中文字加入白名单',
 			editorCheckCallback: (checking, editor) => {
 				const selection = editor.getSelection().trim();
-				if (!selection) return false;
+				if (!selection || selection.includes('\n') || selection.startsWith('#')) return false;
 				if (!checking) void this.addToWhitelist(selection);
 				return true;
 			},
@@ -52,7 +52,7 @@ export default class CompliancePlugin extends Plugin {
 			name: '把选中文字加入自定义词库',
 			editorCheckCallback: (checking, editor) => {
 				const selection = editor.getSelection().trim();
-				if (!selection || selection.includes('\n')) return false;
+				if (!selection || /[\n|｜]/.test(selection) || /^[#/]/.test(selection)) return false;
 				if (!checking) void this.addCustomWord(selection);
 				return true;
 			},
@@ -74,12 +74,16 @@ export default class CompliancePlugin extends Plugin {
 					.analyze(info.file?.path ?? null, editor.getValue())
 					.hits.find((h) => h.from <= offset && h.to >= offset);
 				if (!hit) return;
-				for (const s of hit.suggest.filter(isReplacement)) {
+				for (const s of hit.replace) {
 					menu.addItem((item) =>
 						item
 							.setTitle(`合规：换成“${s}”`)
 							.setIcon('replace')
-							.onClick(() => editor.replaceRange(s, editor.offsetToPos(hit.from), editor.offsetToPos(hit.to))),
+							.onClick(() => {
+								const from = editor.offsetToPos(hit.from);
+								const to = editor.offsetToPos(hit.to);
+								if (editor.getRange(from, to) === hit.text) editor.replaceRange(s, from, to);
+							}),
 					);
 				}
 				menu.addItem((item) =>
@@ -114,7 +118,7 @@ export default class CompliancePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<ComplianceSettings>);
+		this.settings = Object.assign(defaultSettings(), (await this.loadData()) as Partial<ComplianceSettings>);
 	}
 
 	async saveSettings() {
@@ -211,7 +215,7 @@ export default class CompliancePlugin extends Plugin {
 		}
 		const analysis = this.analyze(view.file.path, view.editor.getValue());
 		if (!analysis.active) {
-			new Notice('这篇笔记不在检查范围内');
+			new Notice(SKIPPED[analysis.skipped ?? 'scope']);
 			return;
 		}
 		const date = window.moment().format('YYYY-MM-DD HH:mm');
@@ -232,6 +236,6 @@ export default class CompliancePlugin extends Plugin {
 		const lines = this.settings.customWords.split('\n').filter((l) => l.trim());
 		this.settings.customWords = [...lines, `${term} | 慎用`].join('\n');
 		await this.saveSettings();
-		new Notice(`已把“${term}”加入自定义词库，可在设置里补充级别和建议`);
+		new Notice(`已把“${term}”加入自定义词库，可在设置里补充级别和替换词`);
 	}
 }

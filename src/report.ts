@@ -29,7 +29,7 @@ export function buildReport(title: string, analysis: Analysis, date: string): st
 		lines.push('| 行 | 表达 | 级别 | 问题 | 依据 | 建议 |', '| --- | --- | --- | --- | --- | --- |');
 		for (const h of analysis.hits) {
 			lines.push(
-				`| ${h.line} | ${cell(h.text)} | ${LEVEL_LABEL[h.level]} | ${cell(h.reason)} | ${cell(h.basis)} | ${cell(h.suggest.join('；'))} |`,
+				`| ${h.line} | ${cell(h.text)} | ${LEVEL_LABEL[h.level]} | ${cell(h.reason)} | ${cell(h.basis)} | ${cell([...h.replace.map((r) => `换成“${r}”`), ...h.suggest].join('；'))} |`,
 			);
 		}
 		lines.push('');

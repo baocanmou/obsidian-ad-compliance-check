@@ -20,7 +20,10 @@ export interface RuleDef {
 	exceptPattern?: string;
 	reason: string;
 	basis: string;
+	/** Advice on how to rewrite the sentence. */
 	suggest?: string[];
+	/** Words that can replace the expression as-is. */
+	replace?: string[];
 }
 
 export interface Pack {
@@ -36,6 +39,8 @@ export interface CompiledRule {
 	exceptRe: RegExp | null;
 	def: RuleDef;
 	pack: string;
+	/** User-defined rules outrank built-in ones on the same text. */
+	custom: boolean;
 }
 
 export interface Ruleset {
@@ -52,6 +57,7 @@ export interface Hit {
 	reason: string;
 	basis: string;
 	suggest: string[];
+	replace: string[];
 	pack: string;
 }
 
@@ -74,7 +80,7 @@ function literalRegExp(words: string[], pattern?: string): RegExp | null {
 	return parts.length ? new RegExp(parts.join('|'), 'gim') : null;
 }
 
-export function compileRule(def: RuleDef, pack: string): CompiledRule | null {
+export function compileRule(def: RuleDef, pack: string, custom = false): CompiledRule | null {
 	const parts = [...new Set(def.terms ?? [])]
 		.filter(Boolean)
 		.sort((a, b) => b.length - a.length)
@@ -87,6 +93,7 @@ export function compileRule(def: RuleDef, pack: string): CompiledRule | null {
 			exceptRe: literalRegExp(def.except ?? [], def.exceptPattern),
 			def,
 			pack,
+			custom,
 		};
 	} catch {
 		// An invalid user-supplied pattern is skipped rather than breaking the whole check.
@@ -94,10 +101,13 @@ export function compileRule(def: RuleDef, pack: string): CompiledRule | null {
 	}
 }
 
-export function compileRuleset(rules: Array<{ def: RuleDef; pack: string }>, whitelist: string[]): Ruleset {
+export function compileRuleset(
+	rules: Array<{ def: RuleDef; pack: string; custom?: boolean }>,
+	whitelist: string[],
+): Ruleset {
 	const compiled: CompiledRule[] = [];
 	for (const r of rules) {
-		const c = compileRule(r.def, r.pack);
+		const c = compileRule(r.def, r.pack, r.custom);
 		if (c) compiled.push(c);
 	}
 	return { rules: compiled, whitelistRe: literalRegExp(whitelist) };
@@ -150,7 +160,7 @@ function within(ranges: Range[], from: number, to: number): boolean {
 	return !!r && r[0] <= from && r[1] >= to;
 }
 
-const FRONTMATTER = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
+const FRONTMATTER = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/;
 
 /** Parts of a note that are not published copy: frontmatter, code, links, comments. */
 export function maskRanges(text: string): Range[] {
@@ -158,27 +168,31 @@ export function maskRanges(text: string): Range[] {
 	const fm = FRONTMATTER.exec(text);
 	if (fm) ranges.push([0, fm[0].length]);
 
+	// Fenced code: an opening line of three or more backticks or tildes, closed by a line
+	// of the same character at least as long, with nothing after it.
 	let pos = 0;
-	let fence: string | null = null;
-	let fenceStart = 0;
+	let fence: { char: string; length: number; start: number } | null = null;
 	for (const line of text.split('\n')) {
-		const marker = /^\s*(```+|~~~+)/.exec(line)?.[1];
+		const m = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(line.replace(/\r$/, ''));
+		const marker = m?.[1] ?? '';
+		const rest = m?.[2] ?? '';
 		if (marker) {
+			const char = marker.charAt(0);
 			if (fence === null) {
-				fence = marker.slice(0, 3);
-				fenceStart = pos;
-			} else if (marker.startsWith(fence)) {
-				ranges.push([fenceStart, pos + line.length]);
+				if (char !== '`' || !rest.includes('`')) fence = { char, length: marker.length, start: pos };
+			} else if (char === fence.char && marker.length >= fence.length && rest.trim() === '') {
+				ranges.push([fence.start, pos + line.length]);
 				fence = null;
 			}
 		}
 		pos += line.length + 1;
 	}
-	if (fence !== null) ranges.push([fenceStart, text.length]);
+	if (fence !== null) ranges.push([fence.start, text.length]);
 
 	for (const re of [
 		/`[^`\n]+`/g,
-		/https?:\/\/[^\s)\]>]+/g,
+		// A URL ends at whitespace, a bracket, or the first Chinese character or full-width mark.
+		/https?:\/\/[^\s)\]>\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]+/g,
 		/\[\[[^\]\n]*\]\]/g,
 		/\]\([^)\n]*\)/g,
 		/%%[\s\S]*?%%/g,
@@ -207,11 +221,13 @@ export function scan(text: string, ruleset: Ruleset): Hit[] {
 		}
 	}
 
-	// Where expressions overlap, keep the earliest, then the longest, then the most severe.
+	// Where expressions overlap, keep the earliest, then the longest, then a user-defined
+	// rule over a built-in one, then the most severe.
 	found.sort(
 		(a, b) =>
 			a.range[0] - b.range[0] ||
 			b.range[1] - a.range[1] ||
+			Number(b.rule.custom) - Number(a.rule.custom) ||
 			LEVEL_RANK[a.rule.def.level] - LEVEL_RANK[b.rule.def.level],
 	);
 
@@ -233,6 +249,7 @@ export function scan(text: string, ruleset: Ruleset): Hit[] {
 			reason: rule.def.reason,
 			basis: rule.def.basis,
 			suggest: rule.def.suggest ?? [],
+			replace: rule.def.replace ?? [],
 			pack: rule.pack,
 		});
 	}
@@ -256,7 +273,7 @@ export function parseNoteOptions(text: string, switchKey: string, packsKey: stri
 		const m = /^([^:#\s][^:]*):\s*(.*)$/.exec(lines[i] ?? '');
 		if (!m) continue;
 		const key = (m[1] ?? '').trim();
-		const value = (m[2] ?? '').trim();
+		const value = (m[2] ?? '').replace(/\s+#.*$/, '').trim();
 		if (key === switchKey) {
 			options.enabled = !/^(false|no|off|否|关|关闭)$/i.test(value.replace(/^["']|["']$/g, ''));
 		} else if (key === packsKey) {
@@ -286,7 +303,7 @@ const LEVEL_WORDS: Record<string, Level> = {
 };
 
 /**
- * One rule per line: `词语 | 级别 | 建议1、建议2 | 说明`.
+ * One rule per line: `词语 | 级别 | 替换词1、替换词2 | 说明`.
  * Only the word is required. A word written as `/.../` is a regular expression.
  */
 export function parseCustomWords(text: string, basis: string): RuleDef[] {
@@ -294,16 +311,18 @@ export function parseCustomWords(text: string, basis: string): RuleDef[] {
 	for (const raw of text.split(/\r?\n/)) {
 		const line = raw.trim();
 		if (!line || line.startsWith('#')) continue;
-		const cols = line.split(/[|｜]/).map((s) => s.trim());
-		const word = cols[0] ?? '';
-		if (!word) continue;
+		// A regular expression may itself contain `|`, so it is taken off before splitting columns.
+		const re = /^\/(.+?)\/\s*(?:[|｜]|$)/.exec(line);
+		const cols = (re ? line.slice(re[0].length) : line).split(/[|｜]/).map((s) => s.trim());
+		if (re) cols.unshift('');
+		const word = re ? '' : (cols[0] ?? '');
+		if (!re && !word) continue;
 		const rule: RuleDef = {
 			level: LEVEL_WORDS[cols[1] ?? ''] ?? 'caution',
 			reason: cols[3] || '自定义词库中的词语。',
 			basis,
-			suggest: cols[2] ? splitList(cols[2]) : [],
+			replace: cols[2] ? splitList(cols[2]) : [],
 		};
-		const re = /^\/(.+)\/$/.exec(word);
 		if (re) rule.pattern = re[1];
 		else rule.terms = [word];
 		rules.push(rule);

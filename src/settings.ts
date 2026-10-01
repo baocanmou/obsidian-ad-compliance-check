@@ -4,7 +4,7 @@ import { PACKS, termCount } from './packs';
 import { DISCLAIMER } from './report';
 import type { FolderRule } from './ruleset';
 
-const WORD_FORMAT = '每行一条：词语 | 级别 | 建议 | 说明。只有词语必填；级别写禁用、慎用或需依据，不写按慎用；多个建议用顿号隔开。';
+const WORD_FORMAT = '每行一条：词语 | 级别 | 替换词 | 说明。只有词语必填；级别写禁用、慎用或需依据，不写按慎用；多个替换词用顿号隔开。';
 
 export class ComplianceSettingTab extends PluginSettingTab {
 	constructor(
@@ -49,7 +49,7 @@ export class ComplianceSettingTab extends PluginSettingTab {
 			.setClass('compliance-setting-area')
 			.addTextArea((t) =>
 				t
-					.setPlaceholder('词语 | 级别 | 建议 | 说明')
+					.setPlaceholder('词语 | 级别 | 替换词 | 说明')
 					.setValue(s.customWords)
 					.onChange(async (v) => {
 						s.customWords = v;
