@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
+<rect x="1" y="1" width="1198" height="328" rx="20" fill="#faf8f3" stroke="#e4e0d5" stroke-width="2"/>
+<text x="40" y="62" font-size="26" font-weight="700" fill="#111111">How Ad Compliance Check works</text>
+<rect x="40.0" y="104" width="168.3" height="150" rx="14" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="56.0" y="138" font-size="15" font-weight="700" fill="#686860">01</text>
+<text x="56.0" y="170" font-size="17" font-weight="700" fill="#111111">Write or paste</text>
+<text x="56.0" y="198" font-size="14" font-weight="400" fill="#33332e">copy in Obsidian</text>
+<text x="56.0" y="220" font-size="14" font-weight="400" fill="#33332e">as usual</text>
+<path d="M211.3 179.0 L225.3 179.0" stroke="#111111" stroke-width="2.5"/>
+<path d="M219.3 173.0 L227.3 179.0 L219.3 185.0" fill="none" stroke="#111111" stroke-width="2.5"/>
+<rect x="230.3" y="104" width="168.3" height="150" rx="14" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="246.3" y="138" font-size="15" font-weight="700" fill="#686860">02</text>
+<text x="246.3" y="170" font-size="17" font-weight="700" fill="#111111">Match word lists</text>
+<text x="246.3" y="198" font-size="14" font-weight="400" fill="#33332e">skips properties,</text>
+<text x="246.3" y="220" font-size="14" font-weight="400" fill="#33332e">code and links</text>
+<path d="M401.7 179.0 L415.7 179.0" stroke="#111111" stroke-width="2.5"/>
+<path d="M409.7 173.0 L417.7 179.0 L409.7 185.0" fill="none" stroke="#111111" stroke-width="2.5"/>
+<rect x="420.7" y="104" width="168.3" height="150" rx="14" fill="#ffd900" stroke="#111111" stroke-width="2"/>
+<text x="436.7" y="138" font-size="15" font-weight="700" fill="#686860">03</text>
+<text x="436.7" y="170" font-size="17" font-weight="700" fill="#111111">Mark risks</text>
+<text x="436.7" y="198" font-size="14" font-weight="400" fill="#33332e">ban, caution,</text>
+<text x="436.7" y="220" font-size="14" font-weight="400" fill="#33332e">needs evidence</text>
+<path d="M592.0 179.0 L606.0 179.0" stroke="#111111" stroke-width="2.5"/>
+<path d="M600.0 173.0 L608.0 179.0 L600.0 185.0" fill="none" stroke="#111111" stroke-width="2.5"/>
+<rect x="611.0" y="104" width="168.3" height="150" rx="14" fill="#ffd900" stroke="#111111" stroke-width="2"/>
+<text x="627.0" y="138" font-size="15" font-weight="700" fill="#686860">04</text>
+<text x="627.0" y="170" font-size="17" font-weight="700" fill="#111111">Read the basis</text>
+<text x="627.0" y="198" font-size="14" font-weight="400" fill="#33332e">the law and a</text>
+<text x="627.0" y="220" font-size="14" font-weight="400" fill="#33332e">rewrite tip</text>
+<path d="M782.3 179.0 L796.3 179.0" stroke="#111111" stroke-width="2.5"/>
+<path d="M790.3 173.0 L798.3 179.0 L790.3 185.0" fill="none" stroke="#111111" stroke-width="2.5"/>
+<rect x="801.3" y="104" width="168.3" height="150" rx="14" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="817.3" y="138" font-size="15" font-weight="700" fill="#686860">05</text>
+<text x="817.3" y="170" font-size="17" font-weight="700" fill="#111111">Rewrite or allow</text>
+<text x="817.3" y="198" font-size="14" font-weight="400" fill="#33332e">make it verifiable,</text>
+<text x="817.3" y="220" font-size="14" font-weight="400" fill="#33332e">or allowlist it</text>
+<path d="M972.7 179.0 L986.7 179.0" stroke="#111111" stroke-width="2.5"/>
+<path d="M980.7 173.0 L988.7 179.0 L980.7 185.0" fill="none" stroke="#111111" stroke-width="2.5"/>
+<rect x="991.7" y="104" width="168.3" height="150" rx="14" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="1007.7" y="138" font-size="15" font-weight="700" fill="#686860">06</text>
+<text x="1007.7" y="170" font-size="17" font-weight="700" fill="#111111">Copy the report</text>
+<text x="1007.7" y="198" font-size="14" font-weight="400" fill="#33332e">a Markdown table</text>
+<text x="1007.7" y="220" font-size="14" font-weight="400" fill="#33332e">for your team</text>
+<text x="40" y="294" font-size="16" fill="#686860">Runs offline. A match means: read this sentence again. It is not a legal finding, and no match is not a clearance.</text>
+</svg>
